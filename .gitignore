@@ -1,4 +1,5 @@
 outputs/*
 .ipynb_checkpoints/*
+experiments/*
 
 !outputs/.gitkeep
