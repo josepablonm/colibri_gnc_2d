@@ -11,6 +11,7 @@ Repository directory
     │   ├───orbit_box.slx
     │   ├───orientation_box.slx
     │   │───sat_orbit_orientation.slx
+    │   │───statespace_2DOF_translation.m
     │   └───plot_orbit.m
     ├───outputs
     │   └───.gitkeep
