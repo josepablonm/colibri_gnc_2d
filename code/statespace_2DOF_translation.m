@@ -1,46 +1,109 @@
 %% 2DOF state space: 2D translation
 
-% Cd = 2
+%%
 
-m = 4;
-rho = 2.19*10^(-12);
+% Cd = 2
 H = 409000;
 R = 6.3781*10^6 + H;
-T = 5564.813794;
-w_orb = 2*pi/T;
-Amin = 0.01;
-Fp0 = rho*Amin*(R*w_orb)^2;
 M = 5.972*10^(24);
 G = 6.67408*10^(-11);
+w_orb = sqrt(M*G/(R^3));
+T = 2*pi/w_orb;
+%% Cube Sat's parameters
+m_sat = 4;
+Amin = 0.01;
+rho = 2.19*10^(-12);
+Fp0 = rho*Amin*(R*w_orb)^2;
+%% Cube Sat's analysis
+
+% states
+% x = [ theta(t) ; theta_dot(t) ; r(t) ; r_dot(t) ]
 
 A = [0, 1, 0, 0;...
-    0, -2*rho*Amin*w_orb*R/m, -rho*Amin*(w_orb^2)-Fp0/(m*R^2), -2*w_orb/R;...
+    0, -2*rho*Amin*w_orb*R/m_sat, -rho*Amin*(w_orb^2)/m_sat - Fp0/(m_sat*R^2), -2*w_orb/R;...
     0, 0, 0, 1;...
-    0, 2*w_orb*R, (w_orb^2)+2*M*G/(R^3), -rho*Amin*w_orb*R/m];
+    0, 2*w_orb*R, (w_orb^2)+2*M*G/(R^3), -rho*Amin*w_orb*R/m_sat];
 
-B = [0,0,0;1/(R*m),0,-rho*R*(w_orb^2)/m;0,0,0;0,1/m,0];
+% input
+% u(t) = [ Fp_c(t) ] 
 
+B = [0;1/(R*m_sat);0;0];
+
+% outputs
+% y(t) = [theta(t) ; r(t)]
 C = [1,0,0,0;0,0,1,0];
 
-D = [0,0,0;0,0,0];
+D = [0;0];
 
-states = {'theta','theta_dot','r','r_dot'};
-inputs = {'Fp_t','Fp_r','At'};
-outputs = {'theta','r'};
+% labels (these are not required)
+states = {'theta_sat','thetadot_sat','r_sat','rdot_sat'};
+inputs = {'Fp'};
+outputs = {'theta_sat','r_sat'};
 
-sys = ss(A,B,C,D,'statename',states,...
+% linear system
+sys_mod = ss(A,B,C,D,'statename',states,...
     'inputname',inputs,...
     'outputname',outputs);
 
-% if it's equal to n (as in n-inputs) all our states are controllable
-rank(ctrb(sys))
 % if is's equal to n (as in n-inputs) all our states are observable
-rank(obsv(sys))
+state_obsv = rank(obsv(sys_mod));
+if state_obsv ~= length(A(:,1))
+    disp('Not all states are observable')
+end
+
+% if it's equal to n (as in n-inputs) all our states are controllable
+state_ctrl = rank(ctrb(sys_mod));
+if state_ctrl ~= length(A(:,1))
+    disp('Not all stetes are controllable')
+    
+    Cout = [C*B C*A*B C*(A^2)*B C*(A^3)*B D];
+    out_ctrl = rank(Cout);
+    
+    % if it's equal to m (as in m-outputs) all our outputs are controllable
+    if out_ctrl == length(C(:,1))
+        disp('Outputs are controllable')
+    end
+end
 
 % poles, frquency, ...
-damp(sys)
+damp(sys_mod)
 
-% To analyze the outputs. Useful if rank(ctrb(sys)) < n
-% if its rank is equal to m (as in m-outputs) our outputs are controllable
-Cout = [C*B C*A*B C*(A^2)*B C*(A^3)*B D];
-rank(Cout)
+%% Control design
+
+% state weights
+%Q = C_sat'*C_sat;
+Q = [1,0,0,0;...
+    0,1,0,0;...
+    0,0,1,0;...
+    0,0,0,1];
+
+% input weights
+Ra = [1];
+
+% K matrix is calculated with LQR
+[K,S,e] = lqr(A,B,Q,Ra);
+
+
+%rk = -1/(C*((A-B*K)^-1)*B);
+
+% closed-loop linear system
+sys = ss(A-B*K, B, C, D);
+
+%% Control evaluation
+
+t = 0:0.01:300;
+%fp = 0.01*ones(size(t));
+%lsim(sys, u, t, x0);
+
+% initial conditions
+x0 = [0;w_orb;R-10;-1];
+
+% system response
+[y,t,x]=initial(sys,x0,t);
+
+% output plot
+[AX,H1,H2] = plotyy(t,y(:,1),t,y(:,2),'plot');
+set(get(AX(1),'Ylabel'),'String','theta deviation (rad)')
+set(get(AX(2),'Ylabel'),'String','r deviation (m)')
+title('Step Response with LQR Control')
+
