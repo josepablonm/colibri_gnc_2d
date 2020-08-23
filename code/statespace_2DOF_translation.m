@@ -91,19 +91,36 @@ sys = ss(A-B*K, B, C, D);
 
 %% Control evaluation
 
-t = 0:0.01:300;
+t = 0:0.01:1000;
 %fp = 0.01*ones(size(t));
 %lsim(sys, u, t, x0);
 
 % initial conditions
-x0 = [0;w_orb;R-10;-1];
+x0 = [0;0;-1*10^(-6);0];
 
 % system response
 [y,t,x]=initial(sys,x0,t);
 
+fig = figure();
+h = subplot(2, 1, 1);
 % output plot
 [AX,H1,H2] = plotyy(t,y(:,1),t,y(:,2),'plot');
 set(get(AX(1),'Ylabel'),'String','theta deviation (rad)')
 set(get(AX(2),'Ylabel'),'String','r deviation (m)')
 title('Step Response with LQR Control')
+xlabel('time [s]')
 
+
+u = zeros(length(x),1);
+for i=2:length(x)
+    dt = t(i)-t(i-1);
+    dx2 = x(i,2) - x(i-1,2);
+    tmp1 = R*rho*w_orb*Amin*(2*R*x(i,2)+w_orb*x(i,3));
+    u(i)= tmp1 + Fp0*x(i,3)/R + 2*w_orb*x(i,4)*m_sat;
+end
+
+h = subplot(2, 1, 2);
+plot(t,u)
+xlabel('time [s]')
+ylabel('Fp [N]')
+title('Change in propulsion force')
