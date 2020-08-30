@@ -2,4 +2,6 @@ outputs/*
 .ipynb_checkpoints/*
 experiments/*
 
+code/tmp_control_plots.m
+
 !outputs/.gitkeep

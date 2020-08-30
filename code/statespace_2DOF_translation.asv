@@ -125,6 +125,13 @@ xlabel('time [s]')
 ylabel('Fp [N]')
 title('Change in propulsion force')
 
+
+%% To automatically update the Simulink model
+% open_system('linear_ss_control.slx');
+% set_param('linear_ss_control/A','Gain',mat2str(A));
+% set_param('linear_ss_control/B','Gain',mat2str(B));
+% set_param('linear_ss_control/C','Gain',mat2str(C));
+% set_param('linear_ss_control/K','Gain',mat2str(K));
 %% N calculation
 
 % N = [K I][A B; C D]^-1[0 ; I] = Y inv(Z) [0;I]
@@ -136,10 +143,3 @@ Z_li = (inv((Z.')*Z))*(Z.');
 
 N = Y*Z_li*[zeros(4,2) ; diag([1,1])];
 
-%% To automatically update the Simulink model
-% open_system('linear_ss_control.slx');
-% set_param('linear_ss_control/A','Gain',mat2str(A));
-% set_param('linear_ss_control/B','Gain',mat2str(B));
-% set_param('linear_ss_control/C','Gain',mat2str(C));
-% set_param('linear_ss_control/K','Gain',mat2str(K));
-% set_param('linear_ss_control/N','Gain',mat2str(N));
