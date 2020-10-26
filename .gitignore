@@ -1,7 +1,7 @@
 outputs/*
 .ipynb_checkpoints/*
-experiments/*
+dev/*
 
-code/tmp_control_plots.m
+attitude/*
 
 !outputs/.gitkeep

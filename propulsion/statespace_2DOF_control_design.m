@@ -3,7 +3,7 @@
 %%
 
 % Cd = 2
-H = 409000;
+H = 375000;
 R = 6.3781*10^6 + H;
 M = 5.972*10^(24);
 G = 6.67408*10^(-11);
@@ -12,7 +12,7 @@ T = 2*pi/w_orb;
 %% Cube Sat's parameters
 m_sat = 4;
 Amin = 0.01;
-rho = 2.19*10^(-12);
+rho = 2.64*10^(-12);
 Fp0 = rho*Amin*(R*w_orb)^2;
 %% Cube Sat's analysis
 
@@ -49,6 +49,8 @@ sys_mod = ss(A,B,C,D,'statename',states,...
 state_obsv = rank(obsv(sys_mod));
 if state_obsv ~= length(A(:,1))
     disp('Not all states are observable')
+else
+    disp('OBSERVABLE')
 end
 
 % if it's equal to n (as in n-inputs) all our states are controllable
@@ -63,6 +65,8 @@ if state_ctrl ~= length(A(:,1))
     if out_ctrl == length(C(:,1))
         disp('Outputs are controllable')
     end
+else
+    disp('CONTROLLABLE')    
 end
 
 % poles, frquency, ...
@@ -71,75 +75,50 @@ damp(sys_mod)
 %% Control design
 
 % state weights
-%Q = C_sat'*C_sat;
-Q = [1,0,0,0;...
-    0,1,0,0;...
-    0,0,1,0;...
-    0,0,0,1];
+Q = C'*C*0.5;
+%Q = [1,0,0,0;...
+%    0,1,0,0;...
+%    0,0,1,0;...
+%    0,0,0,1];
 
 % input weights
-Ra = [1];
+Ra = [5000];
 
 % K matrix is calculated with LQR
 [K,S,e] = lqr(A,B,Q,Ra);
 
-
-%rk = -1/(C*((A-B*K)^-1)*B);
-
-% closed-loop linear system
-sys = ss(A-B*K, B, C, D);
-
 %% Control evaluation
 
-t = 0:0.01:1000;
-%fp = 0.01*ones(size(t));
-%lsim(sys, u, t, x0);
+set_param('linear_ss_control_reg/A','Gain',mat2str(A));
+set_param('linear_ss_control_reg/B','Gain',mat2str(B));
+set_param('linear_ss_control_reg/C','Gain',mat2str(C));
+set_param('linear_ss_control_reg/K','Gain',mat2str(K));
+set_param('linear_ss_control_reg/Fp_n','Value',num2str(Fp0));
 
-% initial conditions
-x0 = [0;0;-1*10^(-6);0];
+set_param('linear_ss_control_reg/saturation','UpperLimit',num2str(20*10^-6 - Fp0));
+set_param('linear_ss_control_reg/saturation','LowerLimit',num2str(-Fp0));
 
-% system response
-[y,t,x]=initial(sys,x0,t);
+set_param('linear_ss_control_reg', 'StopTime', num2str(T));%'1500');
 
-fig = figure();
-h = subplot(2, 1, 1);
-% output plot
-[AX,H1,H2] = plotyy(t,y(:,1),t,y(:,2),'plot');
-set(get(AX(1),'Ylabel'),'String','theta deviation (rad)')
-set(get(AX(2),'Ylabel'),'String','r deviation (m)')
-title('Step Response with LQR Control')
-xlabel('time [s]')
+out = sim('linear_ss_control_reg.slx');
 
+tiempo = out.tout;
+Fp = out.simout.data(:,1);
+dtheta = out.simout.data(:,2);
+dr = out.simout.data(:,3);
 
-u = zeros(length(x),1);
-for i=2:length(x)
-    dt = t(i)-t(i-1);
-    dx2 = x(i,2) - x(i-1,2);
-    tmp1 = R*rho*w_orb*Amin*(2*R*x(i,2)+w_orb*x(i,3));
-    u(i)= tmp1 + Fp0*x(i,3)/R + 2*w_orb*x(i,4)*m_sat;
-end
+figure
+ax1 = subplot(3,1,1);
+plot(ax1, tiempo, Fp)
+ylabel(ax1, 'Thrust [N]')
+title(ax1, 'Linearized cubesat model')
 
-h = subplot(2, 1, 2);
-plot(t,u)
-xlabel('time [s]')
-ylabel('Fp [N]')
-title('Change in propulsion force')
+ax2 = subplot(3,1,2);
+plot(ax2, tiempo, dr, tiempo, zeros(length(tiempo),1),'--')
+ylabel(ax2, 'radial deviation [m]')
 
-%% N calculation
+ax3 = subplot(3,1,3);
+plot(ax3, tiempo, dtheta, tiempo, zeros(length(tiempo),1),'--')
+ylabel(ax3, 'transverse deviation [rad]')
 
-% N = [K I][A B; C D]^-1[0 ; I] = Y inv(Z) [0;I]
-
-Y = [K 1];
-Z = [A B; C D];
-% if rank(Z) = 5, Z has a left inverse
-Z_li = (inv((Z.')*Z))*(Z.'); 
-
-N = Y*Z_li*[zeros(4,2) ; diag([1,1])];
-
-%% To automatically update the Simulink model
-% open_system('linear_ss_control.slx');
-% set_param('linear_ss_control/A','Gain',mat2str(A));
-% set_param('linear_ss_control/B','Gain',mat2str(B));
-% set_param('linear_ss_control/C','Gain',mat2str(C));
-% set_param('linear_ss_control/K','Gain',mat2str(K));
-% set_param('linear_ss_control/N','Gain',mat2str(N));
+xlabel('time [seconds]')
