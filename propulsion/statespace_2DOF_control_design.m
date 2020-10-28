@@ -75,11 +75,11 @@ damp(sys_mod)
 %% Control design
 
 % state weights
-Q = C'*C*0.5;
-%Q = [1,0,0,0;...
-%    0,1,0,0;...
-%    0,0,1,0;...
-%    0,0,0,1];
+%Q = C'*C*0.5;
+Q = [100,0,0,0;...
+    0,0,0,0;...
+    0,0,0.5,0;...
+    0,0,0,0];
 
 % input weights
 Ra = [5000];
@@ -88,6 +88,7 @@ Ra = [5000];
 [K,S,e] = lqr(A,B,Q,Ra);
 
 %% Control evaluation
+open_system('linear_ss_control_reg.slx');
 
 set_param('linear_ss_control_reg/A','Gain',mat2str(A));
 set_param('linear_ss_control_reg/B','Gain',mat2str(B));
@@ -98,7 +99,7 @@ set_param('linear_ss_control_reg/Fp_n','Value',num2str(Fp0));
 set_param('linear_ss_control_reg/saturation','UpperLimit',num2str(20*10^-6 - Fp0));
 set_param('linear_ss_control_reg/saturation','LowerLimit',num2str(-Fp0));
 
-set_param('linear_ss_control_reg', 'StopTime', num2str(T));%'1500');
+set_param('linear_ss_control_reg', 'StopTime', '1500');%num2str(T));%
 
 out = sim('linear_ss_control_reg.slx');
 
@@ -122,3 +123,58 @@ plot(ax3, tiempo, dtheta, tiempo, zeros(length(tiempo),1),'--')
 ylabel(ax3, 'transverse deviation [rad]')
 
 xlabel('time [seconds]')
+
+%% State observer
+
+% closed-loop system poles
+poles = eig([(A-B*K)]);
+
+% you should look at the closed-loop poles and
+% pick new ones accordingly
+% for Pakal we want to observe faster than the control (aprox 10 times)
+% and we don't want oscilation in our response
+obs_poles = [-0.2 0 -0.09 -0.089];
+
+Ke = place(A',C',obs_poles)';
+
+open_system('linear_ss_control_reg_obs.slx');
+
+set_param('linear_ss_control_reg_obs/A','Gain',mat2str(A));
+set_param('linear_ss_control_reg_obs/B','Gain',mat2str(B));
+set_param('linear_ss_control_reg_obs/C','Gain',mat2str(C));
+set_param('linear_ss_control_reg_obs/K','Gain',mat2str(K));
+set_param('linear_ss_control_reg_obs/Fp_n','Value',num2str(Fp0));
+
+set_param('linear_ss_control_reg_obs/A1','Gain',mat2str(A));
+set_param('linear_ss_control_reg_obs/B1','Gain',mat2str(B));
+set_param('linear_ss_control_reg_obs/C1','Gain',mat2str(C));
+set_param('linear_ss_control_reg_obs/Ke','Gain',mat2str(Ke));
+
+set_param('linear_ss_control_reg_obs/saturation','UpperLimit',num2str(20*10^-6 - Fp0));
+set_param('linear_ss_control_reg_obs/saturation','LowerLimit',num2str(-Fp0));
+
+set_param('linear_ss_control_reg_obs', 'StopTime', '1500');%num2str(T));%
+
+out_obs = sim('linear_ss_control_reg.slx');
+
+tiempo_obs = out_obs.tout;
+Fp_obs = out_obs.simout.data(:,1);
+dtheta_obs = out_obs.simout.data(:,2);
+dr_obs = out_obs.simout.data(:,3);
+
+figure
+ax1 = subplot(3,1,1);
+plot(ax1, tiempo, Fp, tiempo_obs, Fp, '-.r')
+ylabel(ax1, 'Thrust [N]')
+title(ax1, 'Linearized cubesat model')
+
+ax2 = subplot(3,1,2);
+plot(ax2, tiempo, dr, tiempo, zeros(length(tiempo),1),'--',tiempo_obs, dr_obs, '-.r')
+ylabel(ax2, 'radial deviation [m]')
+
+ax3 = subplot(3,1,3);
+plot(ax3, tiempo, dtheta, tiempo, zeros(length(tiempo),1),'--',tiempo_obs, dtheta_obs, '-.r')
+ylabel(ax3, 'transverse deviation [rad]')
+
+xlabel('time [seconds]')
+legend(ax3,'full state','target','estimated')

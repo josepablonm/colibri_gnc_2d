@@ -1,13 +1,13 @@
 tiempo = out.tout;
 Fp = out.data.data(:,1);
 dtheta = out.data.data(:,8);
-dr = out.data.data(:,10);
+dr = out.data.data(:,9);%10
 
 figure
 ax1 = subplot(3,1,1);
 plot(ax1, tiempo, Fp)
 ylabel(ax1, 'Thrust [N]')
-title(ax1, 'Controlled nonlinear cubesat model')
+title(ax1, 'Controlled nonlinear cubesat model with linear observer')
 
 ax2 = subplot(3,1,2);
 plot(ax2, tiempo, dr, tiempo, zeros(length(tiempo),1),'--')

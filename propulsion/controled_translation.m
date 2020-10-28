@@ -8,7 +8,7 @@ Amin = 0.01;
 rho = 2.64*10^(-12);
 Fp0 = rho*Amin*(R*w_orb)^2;
 
-%open_system('nonlinear_ss_control_reg.slx');
+open_system('nonlinear_ss_control_reg.slx');
 set_param('nonlinear_ss_control_reg', 'StopTime', '1500');
 
 % Fp
@@ -25,8 +25,8 @@ hold (ax3, 'on')
 %deje el 0.04 para probar rapido, tambien podrias hacer un arreglo con N angulos
 % tipo 0, 0.02, 0.04, 0.2, 0.5, 1.7, 2, 2.5, 3 o algo asi e iteras sobre
 % ella, y asi no hay que esperar tanto tiempo a que acabe
-angles = [0 0.2 1 6];
-for i= 1:1:4
+angles = [0 0.2 0.5 1 2 3 6];
+for i= 1:1:length(angles)
     value = angles(i);
     % aqui ya lo estoy metiendo en radianes
     set_param('nonlinear_ss_control_reg/theta_e','Value',num2str(value*pi/180));
@@ -35,8 +35,8 @@ for i= 1:1:4
     % sacamos los datos de la estructura que regresa la simulacion
     time = e.tout(:,1);
     Fp = e.data.data(:,1);
-    dtheta = e.data.data(:,6);
-    dr = e.data.data(:,7);
+    dtheta = e.data.data(:,8);
+    dr = e.data.data(:,10);
     
     % el color debe ser diferente para todos, no se si este ajuste lo haga
     % notorio. Si no puedes tratar de generarlo aleatoriamente
@@ -47,6 +47,10 @@ for i= 1:1:4
     disp(100*Fp(length(Fp))/Fp0)
     
 end
+
+plot(ax2,time,zeros(length(time),1),'--')
+plot(ax3,time,zeros(length(time),1),'--')
+
 title(ax1,'Controlled propulsion with LEO drag')
 ylabel(ax1, 'Fp [N]')
 xlabel(ax1, 'time [s]')
